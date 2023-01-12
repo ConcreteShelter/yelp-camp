@@ -5,11 +5,34 @@ const mbxGeocoding = require('@mapbox/mapbox-sdk/services/geocoding');
 const campground = require('../models/campground');
 const geocoder = mbxGeocoding({ accessToken: mapBoxToken });
 
+// module.exports.index = async (req, res) => {
+//     const campgrounds = await Campground.find({}).sort({ _id: -1 });
+//     res.render('campgrounds/index', { campgrounds });
+// }
 
 module.exports.index = async (req, res) => {
-    const campgrounds = await Campground.find({});
-    res.render('campgrounds/index', { campgrounds });
+    const perPage = 10
+    const page = req.params.page || 1
+    const totalCampgrounds = await Campground.find({})
+    const campgrounds = await Campground
+        .find({})
+        .sort({ _id: -1 })
+        .skip((perPage * page) - perPage)
+        .limit(perPage)
+        .exec(function (err, campgrounds) {
+            Campground.count().exec(function (err, count) {
+                if (err) return next(err)
+                res.render('campgrounds/index', {
+                    totalCampgrounds,
+                    campgrounds,
+                    current: page,
+                    pages: Math.ceil(count / perPage)
+                })
+            })
+        })
+
 }
+
 
 module.exports.renderNewForm = (req, res) => {
     res.render('campgrounds/new');
@@ -87,5 +110,5 @@ module.exports.deleteCampground = async (req, res) => {
     }
     await Campground.findByIdAndDelete(id);
     req.flash('success', 'Successfully deleted campground!')
-    res.redirect(`/campgrounds`)
+    res.redirect(`/campgrounds/list/1`)
 }
